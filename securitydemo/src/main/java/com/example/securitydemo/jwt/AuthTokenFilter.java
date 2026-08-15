@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,10 +38,18 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
+        String requestURI = request.getRequestURI();
+
         logger.debug(
                 "AuthTokenFilter called for URI: {}",
-                request.getRequestURI()
+                requestURI
         );
+
+        // Login endpoint does not require JWT
+        if (requestURI.equals("/signin")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         try {
 
@@ -62,11 +71,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                 userDetails.getAuthorities()
                         );
 
-                logger.debug(
-                        "Roles from JWT: {}",
-                        userDetails.getAuthorities()
-                );
-
                 authentication.setDetails(
                         new WebAuthenticationDetailsSource()
                                 .buildDetails(request)
@@ -75,6 +79,11 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                 SecurityContextHolder
                         .getContext()
                         .setAuthentication(authentication);
+
+                logger.debug(
+                        "Authenticated user: {}",
+                        username
+                );
             }
 
         } catch (Exception e) {
@@ -93,7 +102,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         String jwt = jwtUtils.getJwtFromHeader(request);
 
         logger.debug(
-                "AuthTokenFilter.java: {}",
+                "JWT from request: {}",
                 jwt
         );
 

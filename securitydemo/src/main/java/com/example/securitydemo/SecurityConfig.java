@@ -4,8 +4,11 @@ import com.example.securitydemo.jwt.AuthEntryPointJwt;
 import com.example.securitydemo.jwt.AuthTokenFilter;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -42,8 +45,9 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(authorizeRequests ->
                 authorizeRequests
+                        .requestMatchers("/signin").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/api/signin").permitAll()
                         .anyRequest().authenticated()
         );
 
@@ -57,12 +61,9 @@ public class SecurityConfig {
                 exception.authenticationEntryPoint(unauthorizedHandler)
         );
 
-        // http.httpBasic(withDefaults());
-
         http.headers(headers -> headers
                 .frameOptions(frameOptions ->
-                        frameOptions
-                                .sameOrigin()
+                        frameOptions.sameOrigin()
                 )
         );
 
@@ -77,31 +78,42 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService() {
+    public UserDetailsService userDetailsService(DataSource dataSource) {
+        return new JdbcUserDetailsManager(dataSource);
+    }
 
-        UserDetails user1 = User.withUsername("user1")
-                .password(passwordEncoder().encode("password1"))
-                .roles("USER")
-                .build();
+    @Bean
+    public CommandLineRunner initData(UserDetailsService userDetailsService) {
 
-        UserDetails admin = User.withUsername("admin")
-                .password(passwordEncoder().encode("adminPass"))
-                .roles("ADMIN")
-                .build();
+        return args -> {
 
-        JdbcUserDetailsManager userDetailsManager =
-                new JdbcUserDetailsManager(dataSource);
+            JdbcUserDetailsManager manager =
+                    (JdbcUserDetailsManager) userDetailsService;
 
-        userDetailsManager.createUser(user1);
-        userDetailsManager.createUser(admin);
+            UserDetails user1 = User.withUsername("user1")
+                    .password(passwordEncoder().encode("password1"))
+                    .roles("USER")
+                    .build();
 
-        return userDetailsManager;
+            UserDetails admin = User.withUsername("admin")
+                    .password(passwordEncoder().encode("adminPass"))
+                    .roles("ADMIN")
+                    .build();
 
-        // return new InMemoryUserDetailsManager(user1, admin);
+            manager.createUser(user1);
+            manager.createUser(admin);
+        };
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration builder) throws Exception {
+
+        return builder.getAuthenticationManager();
     }
 }

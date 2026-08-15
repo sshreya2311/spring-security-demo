@@ -17,7 +17,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.security.Key;
 import java.util.Date;
 
 @Component
@@ -39,7 +38,10 @@ public class JwtUtils {
         String bearerToken =
                 request.getHeader("Authorization");
 
-        logger.debug("Authorization Header: {}", bearerToken);
+        logger.debug(
+                "Authorization Header: {}",
+                bearerToken
+        );
 
         if (bearerToken != null &&
                 bearerToken.startsWith("Bearer ")) {
@@ -52,7 +54,8 @@ public class JwtUtils {
 
 
     // Generate JWT token
-    public String generateTokenFromUsername(UserDetails userDetails) {
+    public String generateTokenFromUsername(
+            UserDetails userDetails) {
 
         String username = userDetails.getUsername();
 
@@ -74,7 +77,7 @@ public class JwtUtils {
     public String getUsernameFromToken(String token) {
 
         return Jwts.parser()
-                .verifyWith((SecretKey) key())
+                .verifyWith(key())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
@@ -83,7 +86,7 @@ public class JwtUtils {
 
 
     // Generate signing key
-    public Key key() {
+    private SecretKey key() {
 
         return Keys.hmacShaKeyFor(
                 Decoders.BASE64.decode(jwtSecret)
@@ -96,10 +99,8 @@ public class JwtUtils {
 
         try {
 
-            System.out.println("Validate");
-
             Jwts.parser()
-                    .verifyWith((SecretKey) key())
+                    .verifyWith(key())
                     .build()
                     .parseSignedClaims(authToken);
 
